@@ -22,7 +22,7 @@ def extract_spec(wav):
     out[0, :, :] = spectrogram
     out[1, :, :] = spectrogram
     out[2, :, :] = spectrogram
-    return torch.Tensor(out)
+    return torch.tensor(out)
 
 
 def extract_melspec(wav):
@@ -44,7 +44,7 @@ class MyDatasetSTFT(Dataset):
                                           crop_position='random'),
         ])
 
-        self.mfcc_transform = torchaudio.transforms.MFCC(n_mfcc=40, log_mels=True)
+        self.mfcc_transform = torchaudio.transforms.MFCC(n_mfcc=40, sample_rate=8000, log_mels=True)
         self.data_type = data_type
 
     def __len__(self):
@@ -63,8 +63,10 @@ class MyDatasetSTFT(Dataset):
         elif self.data_type == 'melspec':
             transformed_audio = transformed_audio[0].cpu().numpy()
             feats = extract_melspec(transformed_audio)
-
-        return feats, self.lbs[idx], self.fns[idx]
+        elif self.data_type == 'tdnn_mfcc':
+            feats = self.mfcc_transform(transformed_audio)
+            feats = feats.T
+        return torch.tensor(feats), self.lbs[idx], self.fns[idx]
 
 
 def get_fn_lbs():
@@ -114,8 +116,7 @@ def get_fn_submit():
 
 
 def build_dataloaders(args):
-    fns = []
-    lbs = []
+
     # train
     submit_lbs, submit_fns = get_fn_submit()
 
@@ -163,4 +164,4 @@ def build_dataloaders(args):
                                         shuffle=False,
                                         num_workers=cf.NUM_WORKERS)
 
-    return dset_loaders, (train_fns, test_fns, val_fns, train_lbs, test_lbs, val_lbs)
+    return dset_loaders, (train_fns, test_fns, val_fns, train_lbs, test_lbs, val_lbs, submit_lbs, submit_fns)
